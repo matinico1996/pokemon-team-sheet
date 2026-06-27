@@ -1,0 +1,83 @@
+/* Print Media Stylesheet */
+@media print {
+  /* Reset document and body */
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide everything except the print sheet */
+  .app-header,
+  .editor-section,
+  .sticky-preview-header,
+  .app-container > *:not(.main-content),
+  .main-content > *:not(.preview-section),
+  .preview-section > *:not(.preview-wrapper),
+  .preview-wrapper > *:not(.vgc-sheet) {
+    display: none !important;
+  }
+
+  /* Override container elements to be transparent and full-width */
+  .app-container,
+  .main-content,
+  .preview-section,
+  .preview-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    position: static !important;
+  }
+
+  /* Target VGC sheet itself */
+  .vgc-sheet {
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 20mm 15mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-after: avoid;
+    page-break-before: avoid;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Ensure dotted lines look fine or turn into solid lines for clean print */
+  .vgc-field-row {
+    border-bottom: 1px solid #777777 !important;
+  }
+
+  /* Make sure borders of tables and blocks are crisp and solid black */
+  .vgc-header, 
+  .vgc-pk-box, 
+  .vgc-footer {
+    border: 2px solid #000000 !important;
+  }
+
+  .vgc-table tr {
+    border-bottom: 1px solid #000000 !important;
+  }
+
+  .vgc-th-label {
+    border-right: 1px solid #000000 !important;
+  }
+}
+
+/* Page rules */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
