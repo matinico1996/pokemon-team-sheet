@@ -662,3 +662,19 @@ input[type="text"]:focus {
     flex-grow: 1;
   }
 }
+
+/* App Footer Styling */
+.app-footer {
+  text-align: center;
+  padding: 24px 0 8px 0;
+  margin-top: 32px;
+  color: var(--text-medium);
+  font-size: 13px;
+  font-weight: 500;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.app-footer strong {
+  color: #0369a1;
+}
+
