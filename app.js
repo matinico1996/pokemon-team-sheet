@@ -697,6 +697,55 @@ function setupAllAutocompletes() {
 }
 
 // ----------------------------------------------------
+// Mobile Responsive Enhancements
+// ----------------------------------------------------
+
+function adjustPreviewScale() {
+  const previewWrapper = document.querySelector('.preview-wrapper');
+  const sheet = document.getElementById('print-preview');
+  if (!previewWrapper || !sheet) return;
+  
+  // Reset styling first to read natural client width
+  sheet.style.transform = '';
+  previewWrapper.style.height = '';
+  
+  const wrapperWidth = previewWrapper.clientWidth;
+  const sheetWidth = 794; // A4 width in pixels at standard DPI
+  
+  if (wrapperWidth < sheetWidth + 32 && wrapperWidth > 0) {
+    const scale = (wrapperWidth - 32) / sheetWidth;
+    sheet.style.transform = `scale(${scale})`;
+    sheet.style.transformOrigin = 'top center';
+    
+    // Scale container height to prevent white gap at the bottom
+    const sheetHeight = 1123; // A4 height in pixels
+    previewWrapper.style.height = `${sheetHeight * scale + 32}px`;
+  }
+}
+
+function setupMobileTabs() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const mainContent = document.querySelector('.main-content');
+  
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      const tab = btn.dataset.tab;
+      if (tab === 'preview') {
+        mainContent.classList.add('show-preview');
+        setTimeout(adjustPreviewScale, 80);
+      } else {
+        mainContent.classList.remove('show-preview');
+      }
+    });
+  });
+  
+  window.addEventListener('resize', adjustPreviewScale);
+}
+
+// ----------------------------------------------------
 // Main Execution Entrypoint
 // ----------------------------------------------------
 
@@ -709,6 +758,9 @@ async function main() {
   document.getElementById('download-pdf-btn').addEventListener('click', downloadPDF);
   document.getElementById('print-sheet-btn').addEventListener('click', printSheet);
 
+  // Load mobile responsive structures
+  setupMobileTabs();
+
   // Load PokeAPI datasets
   await initPokeData();
   
@@ -717,7 +769,11 @@ async function main() {
   
   // Recover form state from previous session
   loadFormState();
+  
+  // Adjust scaling after data is loaded
+  adjustPreviewScale();
 }
 
 // Fire!
 document.addEventListener('DOMContentLoaded', main);
+
