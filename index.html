@@ -44,6 +44,9 @@
           </div>
         </div>
         <div class="header-actions">
+          <button id="import-showdown-btn" class="btn btn-primary" style="background: #6366f1; border-color: #6366f1; color: white;">
+            <i class="fa-solid fa-file-import"></i> Pokepaste
+          </button>
           <button id="fill-example-btn" class="btn btn-secondary">
             <i class="fa-solid fa-wand-magic-sparkles"></i> Llenar Ejemplo
           </button>
@@ -734,6 +737,19 @@
 
   </div>
   
+  <!-- Pokepaste Import Modal -->
+  <div id="pokepaste-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;">
+    <div class="modal-content" style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+      <h2 style="margin-top: 0; color: #0f172a; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-paste"></i> Importar desde Showdown</h2>
+      <p style="color: #475569; font-size: 14px; margin-bottom: 12px;">Pega tu equipo en formato Showdown o un enlace de <strong>pokepast.es</strong>.</p>
+      <textarea id="pokepaste-textarea" rows="12" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: monospace; font-size: 13px; resize: vertical;" placeholder="https://pokepast.es/ejemplo&#10;&#10;O pega el texto directo:&#10;Tornadus (M) @ Mental Herb&#10;Ability: Prankster&#10;Level: 50&#10;Tera Type: Dark&#10;EVs: 252 HP / 4 Def / 252 Spe&#10;Timid Nature&#10;- Tailwind&#10;- Bleakwind Storm&#10;- Taunt&#10;- Protect"></textarea>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+        <button id="close-modal-btn" class="btn btn-secondary" style="background: #e2e8f0; color: #0f172a; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancelar</button>
+        <button id="confirm-import-btn" class="btn btn-primary" style="background: #6366f1; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Importar Equipo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JavaScript Logic -->
   <script src="app.js"></script>
 </body>

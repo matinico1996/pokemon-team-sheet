@@ -839,6 +839,123 @@ function setupMobileTabs() {
 }
 
 // ----------------------------------------------------
+// Pokepaste / Showdown Import Logic
+// ----------------------------------------------------
+
+async function handleTeamImport(input) {
+  let text = input.trim();
+  
+  // Soporte Poképaste: Fetch asincrónico si detecta URL
+  if (text.includes('pokepast.es/')) {
+    try {
+      let url = text;
+      if (!url.startsWith('http')) url = 'https://' + url;
+      if (url.endsWith('/')) url = url.slice(0, -1);
+      if (!url.endsWith('/raw')) url += '/raw';
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+      text = await response.text();
+    } catch (e) {
+      alert('Error fetching Pokepaste URL: ' + e.message);
+      return;
+    }
+  }
+
+  const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(b => b.length > 0);
+  
+  for (let i = 0; i < Math.min(blocks.length, 6); i++) {
+    const lines = blocks[i].split('\n').map(l => l.trim());
+    if (lines.length === 0) continue;
+    
+    // Extracción de Nombre, Apodo y Objeto
+    const firstLine = lines[0];
+    let name = '';
+    let nickname = '';
+    let item = '';
+    
+    const atParts = firstLine.split('@');
+    let pokemonPart = atParts[0].trim();
+    if (atParts.length > 1) {
+      item = atParts[1].trim();
+    }
+    
+    // Limpiar indicador de género (M) o (F)
+    pokemonPart = pokemonPart.replace(/\(M\)|\(F\)/gi, '').trim();
+    
+    // Separar Apodo de Nombre real
+    const nicknameMatch = pokemonPart.match(/(.*)\((.*)\)/);
+    if (nicknameMatch) {
+      nickname = nicknameMatch[1].trim();
+      name = nicknameMatch[2].trim();
+    } else {
+      name = pokemonPart;
+    }
+
+    let ability = '';
+    let nature = '';
+    const moves = [];
+    let level = 50;
+    const evs = {};
+    const ivs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+
+    // Extraer propiedades línea por línea
+    for (let j = 1; j < lines.length; j++) {
+      const line = lines[j];
+      
+      if (line.startsWith('Ability:')) {
+        ability = line.replace('Ability:', '').trim();
+      } else if (line.endsWith('Nature')) {
+        nature = line.replace('Nature', '').trim();
+      } else if (line.startsWith('Level:')) {
+        level = parseInt(line.replace('Level:', '').trim()) || 50;
+      } else if (line.startsWith('EVs:')) {
+        const evParts = line.replace('EVs:', '').split('/');
+        evParts.forEach(part => {
+          const [val, stat] = part.trim().split(' ');
+          if (stat) evs[stat.toLowerCase()] = parseInt(val);
+        });
+      } else if (line.startsWith('IVs:')) {
+        const ivParts = line.replace('IVs:', '').split('/');
+        ivParts.forEach(part => {
+          const [val, stat] = part.trim().split(' ');
+          if (stat) ivs[stat.toLowerCase()] = parseInt(val);
+        });
+      } else if (line.startsWith('-')) {
+        if (moves.length < 4) {
+          moves.push(line.replace('-', '').trim());
+        }
+      }
+    }
+
+    // Inyección directo en las clases y convenciones del proyecto
+    const slot = i + 1;
+    const setAndTrigger = (selector, val) => {
+      const el = document.querySelector(`.pokemon-card[data-slot="${slot}"] ${selector}`);
+      if (el) {
+        el.value = val;
+        triggerBindingUpdate(el);
+      }
+    };
+
+    setAndTrigger('.pk-name', name);
+    setAndTrigger('.pk-item', item);
+    setAndTrigger('.pk-ability', ability);
+    setAndTrigger('.pk-nature', nature);
+    
+    for (let m = 0; m < 4; m++) {
+      const el = document.querySelector(`.pokemon-card[data-slot="${slot}"] .pk-move[data-move="${m+1}"]`);
+      if (el) {
+        el.value = moves[m] || '';
+        triggerBindingUpdate(el);
+      }
+    }
+  }
+}
+
+window.handleTeamImport = handleTeamImport;
+
+// ----------------------------------------------------
 // Main Execution Entrypoint
 // ----------------------------------------------------
 
@@ -850,6 +967,32 @@ async function main() {
   document.getElementById('clear-form-btn').addEventListener('click', clearForm);
   document.getElementById('download-pdf-btn').addEventListener('click', downloadPDF);
   document.getElementById('print-sheet-btn').addEventListener('click', printSheet);
+
+  // Set up Pokepaste Modal logic
+  const modal = document.getElementById('pokepaste-modal');
+  const importBtn = document.getElementById('import-showdown-btn');
+  const closeBtn = document.getElementById('close-modal-btn');
+  const confirmBtn = document.getElementById('confirm-import-btn');
+  const textarea = document.getElementById('pokepaste-textarea');
+
+  if (importBtn && modal) {
+    importBtn.addEventListener('click', () => {
+      modal.style.display = 'flex';
+      textarea.value = '';
+    });
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+    confirmBtn.addEventListener('click', async () => {
+      const input = textarea.value;
+      if (input.trim()) {
+        confirmBtn.innerText = 'Cargando...';
+        await handleTeamImport(input);
+        confirmBtn.innerText = 'Importar Equipo';
+        modal.style.display = 'none';
+      }
+    });
+  }
 
   // Load mobile responsive structures
   setupMobileTabs();
