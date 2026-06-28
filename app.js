@@ -1,3 +1,29 @@
+// Safe localStorage wrapper to prevent crashes in private windows / webviews
+const safeStorage = {
+  getItem(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.warn('LocalStorage read blocked:', e);
+      return null;
+    }
+  },
+  setItem(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn('LocalStorage write blocked:', e);
+    }
+  },
+  removeItem(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn('LocalStorage delete blocked:', e);
+    }
+  }
+};
+
 // Natures List (Standard 25 Pokémon Natures)
 const NATURES = [
   'Adamant', 'Bashful', 'Bold', 'Brave', 'Calm',
@@ -105,13 +131,19 @@ async function initPokeData() {
   console.log('Initializing PokeAPI datasets...');
   
   // Try loading cached Pokemon names
-  const cachedPokemon = localStorage.getItem('vgc_pokemon_list');
-  const cachedItems = localStorage.getItem('vgc_items_list');
+  const cachedPokemon = safeStorage.getItem('vgc_pokemon_list');
+  const cachedItems = safeStorage.getItem('vgc_items_list');
   
   if (cachedPokemon && cachedItems) {
-    store.pokemonList = JSON.parse(cachedPokemon);
-    store.itemsList = JSON.parse(cachedItems);
-    console.log('Datasets loaded successfully from local storage.');
+    try {
+      store.pokemonList = JSON.parse(cachedPokemon);
+      store.itemsList = JSON.parse(cachedItems);
+      console.log('Datasets loaded successfully from local storage.');
+    } catch (e) {
+      console.warn('Failed to parse cached pokemon lists, fetching again.');
+      safeStorage.removeItem('vgc_pokemon_list');
+      safeStorage.removeItem('vgc_items_list');
+    }
   } else {
     try {
       // Fetch Pokemon list (limit to Generation 9 including DLC)
@@ -137,8 +169,8 @@ async function initPokeData() {
         }));
       
       // Cache lists for 1 week
-      localStorage.setItem('vgc_pokemon_list', JSON.stringify(store.pokemonList));
-      localStorage.setItem('vgc_items_list', JSON.stringify(store.itemsList));
+      safeStorage.setItem('vgc_pokemon_list', JSON.stringify(store.pokemonList));
+      safeStorage.setItem('vgc_items_list', JSON.stringify(store.itemsList));
       console.log('Datasets successfully fetched and cached.');
     } catch (error) {
       console.warn('Could not fetch datasets from PokéAPI. Operating in offline/manual mode.', error);
@@ -358,9 +390,19 @@ function triggerBindingUpdate(input) {
       
       // When Pokémon species changes, check if it's a valid one to fetch details
       if (field === 'name') {
-        const found = store.pokemonList.find(p => p.name.toLowerCase() === val.toLowerCase());
-        if (found) {
-          fetchPokemonDetails(slot, found.slug);
+        let slug = null;
+        if (val) {
+          if (store.pokemonList && store.pokemonList.length > 0) {
+            const found = store.pokemonList.find(p => p.name.toLowerCase() === val.toLowerCase());
+            if (found) slug = found.slug;
+          } else {
+            // Fallback slug generation if main list is still loading
+            slug = val.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+          }
+        }
+        
+        if (slug) {
+          fetchPokemonDetails(slot, slug);
         } else {
           // If cleared, remove sprite
           updateCardAvatar(slot, '');
@@ -420,11 +462,11 @@ function saveFormState() {
     formState.slots.push(slotState);
   }
   
-  localStorage.setItem('vgc_form_state', JSON.stringify(formState));
+  safeStorage.setItem('vgc_form_state', JSON.stringify(formState));
 }
 
 function loadFormState() {
-  const rawState = localStorage.getItem('vgc_form_state');
+  const rawState = safeStorage.getItem('vgc_form_state');
   if (!rawState) return false;
   
   try {
@@ -561,7 +603,7 @@ function clearForm() {
       const status = document.getElementById(`api-status-${i}`);
       if (status) status.className = 'pokemon-api-status';
     }
-    localStorage.removeItem('vgc_form_state');
+    safeStorage.removeItem('vgc_form_state');
   }
 }
 
@@ -776,8 +818,8 @@ async function main() {
   // Load mobile responsive structures
   setupMobileTabs();
 
-  // Load PokeAPI datasets
-  await initPokeData();
+  // Load PokeAPI datasets in the background without blocking the UI
+  initPokeData();
   
   // Hook up autocompletes
   setupAllAutocompletes();
