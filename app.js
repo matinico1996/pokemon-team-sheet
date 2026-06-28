@@ -1,3 +1,6 @@
+// Version identifier for deployment verification
+console.log(" principal 1 ");
+
 // Global Error Catcher for Browser Diagnostics
 window.addEventListener('error', function(e) {
   alert('Error de JS detectado: ' + e.message + '\nArchivo: ' + e.filename + '\nLínea: ' + e.lineno);
