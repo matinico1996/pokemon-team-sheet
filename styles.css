@@ -679,8 +679,10 @@ input[type="text"]:focus {
   }
   
   .preview-wrapper {
-    overflow: hidden; /* JavaScript will handle scaling, preventing overflow scroll */
-    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    display: block !important;
     background: transparent;
     border: none;
     box-shadow: none;

@@ -705,20 +705,35 @@ function adjustPreviewScale() {
   const sheet = document.getElementById('print-preview');
   if (!previewWrapper || !sheet) return;
   
-  // Reset styling first to read natural client width
+  // Reset style tags to measure natural dimensions
   sheet.style.transform = '';
+  sheet.style.transformOrigin = '';
+  sheet.style.position = '';
+  sheet.style.left = '';
   previewWrapper.style.height = '';
   
   const wrapperWidth = previewWrapper.clientWidth;
-  const sheetWidth = 794; // A4 width in pixels at standard DPI
   
-  if (wrapperWidth < sheetWidth + 32 && wrapperWidth > 0) {
+  // If the tab is transitioning, clientWidth might temporarily be 0.
+  // We schedule a retry to re-evaluate scale once layout paint is complete.
+  if (wrapperWidth === 0) {
+    setTimeout(adjustPreviewScale, 50);
+    return;
+  }
+  
+  const sheetWidth = 794; // Standard A4 pixel width at 96 DPI
+  
+  if (wrapperWidth < sheetWidth + 32) {
     const scale = (wrapperWidth - 32) / sheetWidth;
-    sheet.style.transform = `scale(${scale})`;
-    sheet.style.transformOrigin = 'top center';
+    const leftOffset = (wrapperWidth - (sheetWidth * scale)) / 2;
     
-    // Scale container height to prevent white gap at the bottom
-    const sheetHeight = 1123; // A4 height in pixels
+    sheet.style.transform = `scale(${scale})`;
+    sheet.style.transformOrigin = 'top left';
+    sheet.style.position = 'relative';
+    sheet.style.left = `${leftOffset}px`;
+    
+    // Scale container height to prevent extra whitespace at bottom
+    const sheetHeight = 1123; // Standard A4 pixel height
     previewWrapper.style.height = `${sheetHeight * scale + 32}px`;
   }
 }
