@@ -614,6 +614,11 @@ function clearForm() {
 function downloadPDF() {
   const element = document.getElementById('print-preview');
   
+  if (typeof html2pdf === 'undefined') {
+    alert('La librería para generar PDF local se está cargando o fue bloqueada por tu navegador. Como alternativa, haz clic en "Imprimir Ficha" y selecciona "Guardar como PDF".');
+    return;
+  }
+
   // Ensure the page fits exactly into an A4 PDF sheet using html2pdf configuration
   const opt = {
     margin: 0,
@@ -633,14 +638,37 @@ function downloadPDF() {
   };
 
   // Temporarily scale print element to ensure perfect conversion
+  const originalTransform = element.style.transform;
+  const originalLeft = element.style.left;
+  const originalPosition = element.style.position;
+  
+  // Reset mobile scaling transform before PDF capturing to avoid blurry or cropped PDF
+  element.style.transform = 'none';
+  element.style.left = '0';
+  element.style.position = 'static';
   element.style.boxShadow = 'none';
   element.style.border = 'none';
 
-  html2pdf().from(element).set(opt).save().then(() => {
-    // Restore styling for screen display
-    element.style.boxShadow = '';
-    element.style.border = '';
-  });
+  html2pdf().from(element).set(opt).save()
+    .then(() => {
+      // Restore styling for screen display
+      element.style.transform = originalTransform;
+      element.style.left = originalLeft;
+      element.style.position = originalPosition;
+      element.style.boxShadow = '';
+      element.style.border = '';
+    })
+    .catch(err => {
+      console.error('Error compiling PDF:', err);
+      alert('Hubo un error al compilar el PDF. Te recomendamos usar el botón "Imprimir Ficha" y elegir la opción "Guardar como PDF" en tu navegador. Detalle: ' + err.message);
+      
+      // Restore layout
+      element.style.transform = originalTransform;
+      element.style.left = originalLeft;
+      element.style.position = originalPosition;
+      element.style.boxShadow = '';
+      element.style.border = '';
+    });
 }
 
 function printSheet() {
