@@ -1,3 +1,11 @@
+// Global Error Catcher for Browser Diagnostics
+window.addEventListener('error', function(e) {
+  alert('Error de JS detectado: ' + e.message + '\nArchivo: ' + e.filename + '\nLínea: ' + e.lineno);
+});
+window.addEventListener('unhandledrejection', function(e) {
+  alert('Error en Promesa (Asíncrono): ' + e.reason);
+});
+
 // Safe localStorage wrapper to prevent crashes in private windows / webviews
 const safeStorage = {
   getItem(key) {
