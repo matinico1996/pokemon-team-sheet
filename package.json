@@ -2,6 +2,6 @@
   "name": "pokemon-vgc-sheet",
   "version": "2.0.0",
   "scripts": {
-    "build": "mkdir -p dist && cp index.html app.js styles.css print.css html2pdf.bundle.min.js dist/"
+    "build": "echo ' principal 1 ' && mkdir -p dist && cp index.html app.js styles.css print.css html2pdf.bundle.min.js dist/"
   }
 }
