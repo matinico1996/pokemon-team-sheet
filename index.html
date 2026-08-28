@@ -448,6 +448,9 @@
             <button id="download-pdf-btn" class="btn btn-primary">
               <i class="fa-solid fa-file-arrow-down"></i> Descargar PDF
             </button>
+            <button id="remote-print-btn" class="btn btn-primary" style="background-color: #f59e0b; border-color: #f59e0b; opacity: 0.5; cursor: not-allowed;" disabled title="Llena el nombre del jugador y los 6 Pokémon para habilitar">
+              <i class="fa-solid fa-paper-plane"></i> Imprimir Remoto
+            </button>
             <button id="print-sheet-btn" class="btn btn-success">
               <i class="fa-solid fa-print"></i> Imprimir Ficha
             </button>
@@ -746,6 +749,22 @@
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
         <button id="close-modal-btn" class="btn btn-secondary" style="background: #e2e8f0; color: #0f172a; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancelar</button>
         <button id="confirm-import-btn" class="btn btn-primary" style="background: #6366f1; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Importar Equipo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remote Print Code Modal -->
+  <div id="remote-print-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;">
+    <div class="modal-content" style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+      <h2 style="margin-top: 0; color: #0f172a;"><i class="fa-solid fa-lock"></i> Código de Autorización</h2>
+      <p style="color: #475569; font-size: 14px; margin-bottom: 20px;">Ingresa el código secreto para enviar este equipo a la impresora remota.</p>
+      <input type="password" id="remote-print-code" placeholder="Código" style="width: 100%; padding: 12px; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 18px; text-align: center; margin-bottom: 10px; box-sizing: border-box;">
+      
+      <div id="remote-print-status" style="margin-bottom: 15px; font-size: 14px; font-weight: 600; display: none;"></div>
+
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+        <button id="cancel-remote-print-btn" class="btn btn-secondary" style="background: #e2e8f0; color: #0f172a; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancelar</button>
+        <button id="send-remote-print-btn" class="btn btn-primary" style="background: #f59e0b; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Enviar PDF</button>
       </div>
     </div>
   </div>

@@ -429,6 +429,9 @@ function triggerBindingUpdate(input) {
   
   // Auto-save form
   saveFormState();
+  
+  // Check if we should enable remote print
+  checkRemotePrintStatus();
 }
 
 // Set up all static inputs to bind instantly
@@ -842,6 +845,116 @@ function setupMobileTabs() {
 }
 
 // ----------------------------------------------------
+// Remote Printing & Email Logic
+// ----------------------------------------------------
+function checkRemotePrintStatus() {
+  const btn = document.getElementById('remote-print-btn');
+  if (!btn) return;
+  
+  const playerName = document.getElementById('trainer-player-name').value.trim();
+  let allPokemonFilled = true;
+  for (let i = 1; i <= 6; i++) {
+    const name = document.querySelector(`.pokemon-card[data-slot="${i}"] .pk-name`).value.trim();
+    if (!name) allPokemonFilled = false;
+  }
+  
+  if (playerName && allPokemonFilled) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+    btn.title = 'Enviar PDF a imprimir remota';
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    btn.title = 'Llena el nombre del jugador y los 6 Pokémon para habilitar';
+  }
+}
+
+function generateShowdownText() {
+  let text = '';
+  for (let i = 1; i <= 6; i++) {
+    const card = document.querySelector(`.pokemon-card[data-slot="${i}"]`);
+    if (!card) continue;
+    
+    const name = card.querySelector('.pk-name').value.trim();
+    if (!name) continue; // Si no hay nombre, saltamos este slot
+    
+    const item = card.querySelector('.pk-item').value.trim();
+    const ability = card.querySelector('.pk-ability').value.trim();
+    const nature = card.querySelector('.pk-nature').value.trim();
+    
+    const m1 = card.querySelector('.pk-move[data-move="1"]').value.trim();
+    const m2 = card.querySelector('.pk-move[data-move="2"]').value.trim();
+    const m3 = card.querySelector('.pk-move[data-move="3"]').value.trim();
+    const m4 = card.querySelector('.pk-move[data-move="4"]').value.trim();
+    
+    text += `${name} ${item ? '@ ' + item : ''}\n`;
+    if (ability) text += `Ability: ${ability}\n`;
+    text += `Level: 50\n`;
+    if (nature) text += `${nature} Nature\n`;
+    
+    if (m1) text += `- ${m1}\n`;
+    if (m2) text += `- ${m2}\n`;
+    if (m3) text += `- ${m3}\n`;
+    if (m4) text += `- ${m4}\n`;
+    
+    text += '\n';
+  }
+  return text.trim();
+}
+
+async function sendRemotePrint(code) {
+  if (code !== '223927') {
+    throw new Error('Código incorrecto.');
+  }
+
+  // Recolectar datos del entrenador
+  const playerName = document.getElementById('trainer-player-name').value.trim() || 'Desconocido';
+  const gameName = document.getElementById('trainer-game-name').value.trim() || '-';
+  const teamName = document.getElementById('trainer-team-name').value.trim() || '-';
+  const profileName = document.getElementById('trainer-profile-name').value.trim() || '-';
+  const playerId = document.getElementById('trainer-player-id').value.trim() || '-';
+
+  const showdownData = generateShowdownText();
+  
+  const emailBody = `¡Hola!
+
+El jugador ${playerName} ha enviado un equipo para imprimir.
+
+DATOS DEL ENTRENADOR:
+- Nombre: ${playerName}
+- Nombre en el Juego: ${gameName}
+- Nombre del Equipo: ${teamName}
+- Nombre de Perfil Play! Pokémon: ${profileName}
+- Player ID: ${playerId}
+
+=================================
+POKEPASTE DEL EQUIPO
+(Cópialo y pégalo en el generador)
+=================================
+
+${showdownData}`;
+
+  const formData = new FormData();
+  formData.append("access_key", "d4a89157-221e-4e3f-8fd4-7ec0d70a3675");
+  formData.append("subject", `Impresión Remota VGC: Equipo de ${playerName}`);
+  formData.append("from_name", "Generador VGC Remoto");
+  formData.append("message", emailBody);
+
+  // Send the email request via Web3Forms
+  const response = await fetch("https://api.web3forms.com/submit", {
+    method: "POST",
+    body: formData
+  });
+  
+  const result = await response.json();
+  if (!result.success) throw new Error(result.message || 'Error del servidor de correo');
+  
+  return true;
+}
+
+// ----------------------------------------------------
 // Pokepaste / Showdown Import Logic
 // ----------------------------------------------------
 
@@ -970,6 +1083,44 @@ async function main() {
   document.getElementById('clear-form-btn').addEventListener('click', clearForm);
   document.getElementById('download-pdf-btn').addEventListener('click', downloadPDF);
   document.getElementById('print-sheet-btn').addEventListener('click', printSheet);
+
+  // Set up Remote Print Modal logic
+  const rpBtn = document.getElementById('remote-print-btn');
+  const rpModal = document.getElementById('remote-print-modal');
+  const rpCancel = document.getElementById('cancel-remote-print-btn');
+  const rpSend = document.getElementById('send-remote-print-btn');
+  const rpCode = document.getElementById('remote-print-code');
+  const rpStatus = document.getElementById('remote-print-status');
+
+  if (rpBtn && rpModal) {
+    rpBtn.addEventListener('click', () => {
+      if (rpBtn.disabled) return;
+      rpModal.style.display = 'flex';
+      rpCode.value = '';
+      rpStatus.style.display = 'none';
+    });
+    rpCancel.addEventListener('click', () => {
+      rpModal.style.display = 'none';
+    });
+    rpSend.addEventListener('click', async () => {
+      const code = rpCode.value.trim();
+      rpStatus.style.display = 'block';
+      rpStatus.style.color = '#0f172a';
+      rpStatus.innerText = 'Generando PDF y enviando...';
+      rpSend.disabled = true;
+
+      try {
+        await sendRemotePrint(code);
+        rpStatus.style.color = '#10b981';
+        rpStatus.innerText = '¡PDF enviado exitosamente a la impresora remota!';
+        setTimeout(() => { rpModal.style.display = 'none'; rpSend.disabled = false; }, 2000);
+      } catch (err) {
+        rpStatus.style.color = '#ef4444';
+        rpStatus.innerText = err.message || 'Error al enviar.';
+        rpSend.disabled = false;
+      }
+    });
+  }
 
   // Set up Pokepaste Modal logic
   const modal = document.getElementById('pokepaste-modal');
