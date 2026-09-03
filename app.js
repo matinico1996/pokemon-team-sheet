@@ -1076,6 +1076,21 @@ async function main() {
   document.getElementById('download-pdf-btn').addEventListener('click', downloadPDF);
   document.getElementById('print-sheet-btn').addEventListener('click', printSheet);
 
+  function checkLockdown() {
+    const now = new Date();
+    const day = now.getDay();
+    const time = now.getHours() + (now.getMinutes() / 60);
+
+    // Jueves (4): 14:30 a 18:00
+    if (day === 4 && time >= 14.5 && time < 18.0) return true;
+    // Viernes (5): 18:30 a 21:00
+    if (day === 5 && time >= 18.5 && time < 21.0) return true;
+    // Sábado (6): 11:30 a 15:00
+    if (day === 6 && time >= 11.5 && time < 15.0) return true;
+
+    return false;
+  }
+
   // Set up Remote Print Modal logic
   const rpBtn = document.getElementById('remote-print-btn');
   const rpModal = document.getElementById('remote-print-modal');
@@ -1087,6 +1102,13 @@ async function main() {
   if (rpBtn && rpModal) {
     rpBtn.addEventListener('click', () => {
       if (rpBtn.disabled) return;
+      
+      // Validar horario de Lockdown
+      if (checkLockdown()) {
+        alert("¡Llegaste tarde! El envío remoto de equipos está cerrado en este horario. Presenta tu ficha en papel.");
+        return;
+      }
+
       rpModal.style.display = 'flex';
       rpCode.value = '';
       rpStatus.style.display = 'none';
