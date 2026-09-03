@@ -1077,9 +1077,12 @@ async function main() {
   document.getElementById('print-sheet-btn').addEventListener('click', printSheet);
 
   function checkLockdown() {
-    const now = new Date();
-    const day = now.getDay();
-    const time = now.getHours() + (now.getMinutes() / 60);
+    // Forzar siempre la zona horaria de Argentina, ignorando la configuración del celular
+    const argDateString = new Date().toLocaleString("en-US", {timeZone: "America/Argentina/Buenos_Aires"});
+    const argTime = new Date(argDateString);
+    
+    const day = argTime.getDay();
+    const time = argTime.getHours() + (argTime.getMinutes() / 60);
 
     // Jueves (4): 14:30 a 18:00
     if (day === 4 && time >= 14.5 && time < 18.0) return true;
