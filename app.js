@@ -1086,8 +1086,8 @@ async function main() {
 
     // Jueves (4): 14:30 a 18:00
     if (day === 4 && time >= 14.5 && time < 18.0) return true;
-    // Viernes (5): 18:30 a 21:00
-    if (day === 5 && time >= 18.5 && time < 21.0) return true;
+    // Viernes (5): 18:20 a 21:00
+    if (day === 5 && time >= (18 + 20/60) && time < 21.0) return true;
     // Sábado (6): 11:30 a 15:00
     if (day === 6 && time >= 11.5 && time < 15.0) return true;
 
