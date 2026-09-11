@@ -613,6 +613,29 @@ function clearForm() {
   }
 }
 
+function isShadowBanned() {
+  const playerName = document.getElementById('trainer-player-name').value.toLowerCase().trim();
+  if (playerName.includes('juan velasco') || 
+      playerName.includes('juan velazco') || 
+      playerName.includes('juan ve el asco')) {
+    
+    // Silently clear everything without asking
+    document.querySelectorAll('input[type="text"]').forEach(input => {
+      input.value = '';
+      triggerBindingUpdate(input);
+    });
+    for (let i = 1; i <= 6; i++) {
+      updateCardAvatar(i, '');
+      const status = document.getElementById(`api-status-${i}`);
+      if (status) status.className = 'pokemon-api-status';
+    }
+    safeStorage.removeItem('vgc_form_state');
+    
+    return true;
+  }
+  return false;
+}
+
 // ----------------------------------------------------
 // PDF Generation & Print
 // ----------------------------------------------------
@@ -1073,8 +1096,14 @@ async function main() {
   // Set up action triggers
   document.getElementById('fill-example-btn').addEventListener('click', fillExampleTeam);
   document.getElementById('clear-form-btn').addEventListener('click', clearForm);
-  document.getElementById('download-pdf-btn').addEventListener('click', downloadPDF);
-  document.getElementById('print-sheet-btn').addEventListener('click', printSheet);
+  document.getElementById('download-pdf-btn').addEventListener('click', (e) => {
+    if (isShadowBanned()) { e.preventDefault(); e.stopPropagation(); return; }
+    downloadPDF();
+  });
+  document.getElementById('print-sheet-btn').addEventListener('click', (e) => {
+    if (isShadowBanned()) { e.preventDefault(); e.stopPropagation(); return; }
+    printSheet();
+  });
 
   function checkLockdown() {
     // Forzar siempre la zona horaria de Argentina, ignorando la configuración del celular
@@ -1105,6 +1134,9 @@ async function main() {
   if (rpBtn && rpModal) {
     rpBtn.addEventListener('click', () => {
       if (rpBtn.disabled) return;
+      
+      // Shadowban check
+      if (isShadowBanned()) return;
       
       // Validar horario de Lockdown
       if (checkLockdown()) {
