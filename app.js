@@ -1123,6 +1123,62 @@ async function main() {
     return false;
   }
 
+  function updateCountdown() {
+    const countdownEl = document.getElementById('lockdown-countdown');
+    if (!countdownEl) return;
+    
+    const argDateString = new Date().toLocaleString("en-US", {timeZone: "America/Argentina/Buenos_Aires"});
+    const argTime = new Date(argDateString);
+    const day = argTime.getDay();
+    const time = argTime.getHours() + (argTime.getMinutes() / 60) + (argTime.getSeconds() / 3600);
+
+    const rules = [
+      { day: 4, start: 14.5, end: 18.0 },
+      { day: 5, start: 18.0, end: 21.0 },
+      { day: 6, start: 11.0, end: 15.0 }
+    ];
+
+    let currentRule = null;
+    let upcomingRule = null;
+
+    for (let rule of rules) {
+      if (day === rule.day && time >= rule.start && time < rule.end) {
+        currentRule = rule;
+        break;
+      }
+      if (day === rule.day && time < rule.start) {
+        upcomingRule = rule;
+        break;
+      }
+    }
+
+    if (currentRule) {
+      const hoursLeft = currentRule.end - time;
+      const h = Math.floor(hoursLeft);
+      const m = Math.floor((hoursLeft - h) * 60);
+      const s = Math.floor(((hoursLeft - h) * 60 - m) * 60);
+      
+      countdownEl.style.display = 'block';
+      countdownEl.style.color = '#dc2626'; // Red
+      countdownEl.innerHTML = `<i class="fa-solid fa-clock"></i> El envío está CERRADO. Faltan ${h}h ${m}m ${s}s para que se active.`;
+    } else if (upcomingRule) {
+      const hoursLeft = upcomingRule.start - time;
+      const h = Math.floor(hoursLeft);
+      const m = Math.floor((hoursLeft - h) * 60);
+      const s = Math.floor(((hoursLeft - h) * 60 - m) * 60);
+      
+      countdownEl.style.display = 'block';
+      countdownEl.style.color = '#ea580c'; // Orange
+      countdownEl.innerHTML = `<i class="fa-solid fa-clock"></i> Faltan ${h}h ${m}m ${s}s para el cierre de envíos.`;
+    } else {
+      countdownEl.style.display = 'none';
+    }
+  }
+
+  // Start the countdown timer
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
   // Set up Remote Print Modal logic
   const rpBtn = document.getElementById('remote-print-btn');
   const rpModal = document.getElementById('remote-print-modal');
