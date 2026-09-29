@@ -1113,14 +1113,6 @@ async function main() {
     // Detenemos la ejecución del script aquí para que la página quede completamente "congelada"
     return;
   }
-  // Inicializamos datos básicos
-  try {
-    const rawStatus = document.getElementById('api-status-1');
-    if (rawStatus) rawStatus.innerText = 'Cargando datos base...';
-    await initPokeData();
-  } catch (e) {
-    console.error("No se pudo cargar data offline:", e);
-  }
 
   bindAllInputs();
   // Set up action triggers
