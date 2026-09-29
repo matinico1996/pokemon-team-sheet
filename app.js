@@ -1091,29 +1091,6 @@ window.handleTeamImport = handleTeamImport;
 // ----------------------------------------------------
 
 async function main() {
-  // Vacation Mode Check (October 1 to 15, 2026)
-  const argDateString = new Date().toLocaleString("en-US", {timeZone: "America/Argentina/Buenos_Aires"});
-  const argTime = new Date(argDateString);
-  
-  const year = argTime.getFullYear();
-  const month = argTime.getMonth(); // 0 is January, 9 is October
-  const date = argTime.getDate();
-  
-  // Solo se activa en el año 2026, entre el 1 y el 15 de Octubre
-  if (year === 2026 && month === 9 && date >= 1 && date <= 15) {
-    const overlay = document.getElementById('vacation-overlay');
-    const appContainer = document.querySelector('.app-container');
-    if (overlay && appContainer) {
-      overlay.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
-      appContainer.style.filter = 'blur(10px)';
-      appContainer.style.pointerEvents = 'none';
-      appContainer.style.userSelect = 'none';
-    }
-    // Detenemos la ejecución del script aquí para que la página quede completamente "congelada"
-    return;
-  }
-
   bindAllInputs();
   // Set up action triggers
   document.getElementById('fill-example-btn').addEventListener('click', fillExampleTeam);
