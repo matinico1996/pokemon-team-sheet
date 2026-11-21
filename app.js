@@ -1111,13 +1111,15 @@ async function main() {
     
     const day = argTime.getDay();
     const time = argTime.getHours() + (argTime.getMinutes() / 60);
+    const isTodayNov21 = argTime.getFullYear() === 2026 && argTime.getMonth() === 10 && argTime.getDate() === 21;
 
     // Jueves (4): 14:30 a 18:00
     if (day === 4 && time >= 14.5 && time < 18.0) return true;
     // Viernes (5): 18:00 a 21:00
     if (day === 5 && time >= 18.0 && time < 21.0) return true;
-    // Sábado (6): 11:00 a 15:00
-    if (day === 6 && time >= 11.0 && time < 15.0) return true;
+    // Sábado (6): 11:00 a 15:00 (Solo por hoy 21/11/2026 se da gracia hasta las 11:40)
+    const satStart = isTodayNov21 ? (11 + 40/60) : 11.0;
+    if (day === 6 && time >= satStart && time < 15.0) return true;
 
     return false;
   }
@@ -1130,11 +1132,13 @@ async function main() {
     const argTime = new Date(argDateString);
     const day = argTime.getDay();
     const time = argTime.getHours() + (argTime.getMinutes() / 60) + (argTime.getSeconds() / 3600);
+    const isTodayNov21 = argTime.getFullYear() === 2026 && argTime.getMonth() === 10 && argTime.getDate() === 21;
+    const satStart = isTodayNov21 ? (11 + 40/60) : 11.0;
 
     const rules = [
       { day: 4, start: 14.5, end: 18.0 },
       { day: 5, start: 18.0, end: 21.0 },
-      { day: 6, start: 11.0, end: 15.0 }
+      { day: 6, start: satStart, end: 15.0 }
     ];
 
     let currentRule = null;
