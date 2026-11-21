@@ -647,6 +647,11 @@ function isShadowBanned() {
     }
     safeStorage.removeItem('vgc_form_state');
     
+    // Cartel específico para Kina hasta el 5 de diciembre
+    if (isKinaBanActive && isKinaMatch) {
+      alert("solo asuntos serios jodete kina por chistoso");
+    }
+
     return true;
   }
   return false;
@@ -1108,6 +1113,15 @@ window.handleTeamImport = handleTeamImport;
 
 async function main() {
   bindAllInputs();
+  
+  // Verificación al escribir el nombre
+  const playerNameInput = document.getElementById('trainer-player-name');
+  if (playerNameInput) {
+    playerNameInput.addEventListener('change', () => {
+      isShadowBanned();
+    });
+  }
+
   // Set up action triggers
   document.getElementById('fill-example-btn').addEventListener('click', fillExampleTeam);
   document.getElementById('clear-form-btn').addEventListener('click', clearForm);
