@@ -616,22 +616,10 @@ function clearForm() {
 function isShadowBanned() {
   const playerName = document.getElementById('trainer-player-name').value.toLowerCase().trim();
   
-  // Fecha en Argentina para bans temporales
-  const argDateString = new Date().toLocaleString("en-US", {timeZone: "America/Argentina/Buenos_Aires"});
-  const argTime = new Date(argDateString);
-  const year = argTime.getFullYear();
-  const month = argTime.getMonth(); // 10 = Noviembre, 11 = Diciembre
-  const date = argTime.getDate();
-
-  // Ban temporal para Kinaszuk Francisco / Kina: activo hasta el 5 de diciembre de 2026 inclusive
-  const isKinaBanActive = (year === 2026 && (month === 10 || (month === 11 && date <= 5)));
-  const isKinaMatch = playerName.includes('kinaszuk') || /\bkina\b/i.test(playerName) || playerName === 'kina';
-
   const shouldBan = (
     playerName.includes('juan velasco') || 
     playerName.includes('juan velazco') || 
-    playerName.includes('juan ve el asco') ||
-    (isKinaBanActive && isKinaMatch)
+    playerName.includes('juan ve el asco')
   );
 
   if (shouldBan) {
@@ -646,11 +634,6 @@ function isShadowBanned() {
       if (status) status.className = 'pokemon-api-status';
     }
     safeStorage.removeItem('vgc_form_state');
-    
-    // Cartel específico para Kina hasta el 5 de diciembre
-    if (isKinaBanActive && isKinaMatch) {
-      alert("solo asuntos serios jodete kina por chistoso");
-    }
 
     return true;
   }
