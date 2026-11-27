@@ -1,10 +1,10 @@
 require('dotenv').config();
 const express = require('express');
-const { ensureMasterUser } = require('./db');
+const { ensureMasterUser } = require('../lib/db');
 
-const authRouter = require('./auth');
-const checkAccessRouter = require('./check-access');
-const adminRouter = require('./admin');
+const authRouter = require('../lib/auth');
+const checkAccessRouter = require('../lib/check-access');
+const adminRouter = require('../lib/admin');
 
 const app = express();
 
@@ -29,5 +29,9 @@ app.use('/check-access', checkAccessRouter);
 
 app.use('/api/admin', adminRouter);
 app.use('/admin', adminRouter);
+
+app.all('*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint no encontrado' });
+});
 
 module.exports = app;
