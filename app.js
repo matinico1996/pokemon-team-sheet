@@ -439,6 +439,13 @@ function bindAllInputs() {
 // Local Caching of Form State
 // ----------------------------------------------------
 
+function getUserStorageKey() {
+  if (currentUser && currentUser.username) {
+    return 'vgc_data_' + currentUser.username.trim().toLowerCase();
+  }
+  return 'vgc_form_state';
+}
+
 function saveFormState() {
   const formState = {
     trainer: {
@@ -468,18 +475,27 @@ function saveFormState() {
     formState.slots.push(slotState);
   }
   
-  safeStorage.setItem('vgc_form_state', JSON.stringify(formState));
+  safeStorage.setItem(getUserStorageKey(), JSON.stringify(formState));
 }
 
 function loadFormState() {
-  const rawState = safeStorage.getItem('vgc_form_state');
-  if (!rawState) return false;
+  const rawState = safeStorage.getItem(getUserStorageKey());
+  if (!rawState) {
+    if (currentUser && currentUser.username) {
+      const pName = document.getElementById('trainer-player-name');
+      if (pName && !pName.value.trim()) {
+        pName.value = currentUser.username;
+        triggerBindingUpdate(pName);
+      }
+    }
+    return false;
+  }
   
   try {
     const state = JSON.parse(rawState);
     
     // Restore Trainer Info
-    document.getElementById('trainer-player-name').value = state.trainer.playerName || '';
+    document.getElementById('trainer-player-name').value = state.trainer.playerName || (currentUser ? currentUser.username : '');
     document.getElementById('trainer-game-name').value = state.trainer.gameName || '';
     document.getElementById('trainer-team-name').value = state.trainer.teamName || '';
     document.getElementById('trainer-profile-name').value = state.trainer.profileName || '';
@@ -609,7 +625,7 @@ function clearForm() {
       const status = document.getElementById(`api-status-${i}`);
       if (status) status.className = 'pokemon-api-status';
     }
-    safeStorage.removeItem('vgc_form_state');
+    safeStorage.removeItem(getUserStorageKey());
   }
 }
 
@@ -633,7 +649,7 @@ function isShadowBanned() {
       const status = document.getElementById(`api-status-${i}`);
       if (status) status.className = 'pokemon-api-status';
     }
-    safeStorage.removeItem('vgc_form_state');
+    safeStorage.removeItem(getUserStorageKey());
 
     return true;
   }
@@ -1091,6 +1107,374 @@ async function handleTeamImport(input) {
 window.handleTeamImport = handleTeamImport;
 
 // ----------------------------------------------------
+// Authentication & Moderation System (Local)
+// ----------------------------------------------------
+
+const API_BASE = (window.location.protocol === 'file:') ? 'http://localhost:3000' : '';
+let currentUser = null;
+let authToken = safeStorage.getItem('vgc_auth_token');
+let timeoutCountdownTimer = null;
+
+async function checkAccess() {
+  try {
+    const headers = {};
+    if (authToken) {
+      headers['Authorization'] = 'Bearer ' + authToken;
+    }
+    const res = await fetch(API_BASE + '/api/check-access', { headers });
+    if (!res.ok) return true;
+    const data = await res.json();
+
+    const banOverlay = document.getElementById('lock-ban-overlay');
+    const timeoutOverlay = document.getElementById('lock-timeout-overlay');
+
+    if (data.allowed === false) {
+      if (data.type === 'ban') {
+        if (timeoutOverlay) timeoutOverlay.style.display = 'none';
+        if (banOverlay) banOverlay.style.display = 'flex';
+        return false;
+      }
+      if (data.type === 'timeout') {
+        if (banOverlay) banOverlay.style.display = 'none';
+        if (timeoutOverlay) timeoutOverlay.style.display = 'flex';
+        startTimeoutCountdown(data.timeoutUntil);
+        return false;
+      }
+    } else {
+      if (banOverlay) banOverlay.style.display = 'none';
+      if (timeoutOverlay) timeoutOverlay.style.display = 'none';
+      if (timeoutCountdownTimer) {
+        clearInterval(timeoutCountdownTimer);
+        timeoutCountdownTimer = null;
+      }
+      return true;
+    }
+  } catch (err) {
+    return true;
+  }
+}
+
+function startTimeoutCountdown(timeoutUntil) {
+  if (timeoutCountdownTimer) clearInterval(timeoutCountdownTimer);
+  const clockEl = document.getElementById('timeout-countdown-clock');
+
+  function updateClock() {
+    const now = Date.now();
+    const diff = Math.max(0, timeoutUntil - now);
+
+    if (diff <= 0) {
+      clearInterval(timeoutCountdownTimer);
+      timeoutCountdownTimer = null;
+      if (clockEl) clockEl.innerText = '00:00';
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      return;
+    }
+
+    const totalSecs = Math.floor(diff / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    if (clockEl) clockEl.innerText = formatted;
+  }
+
+  updateClock();
+  timeoutCountdownTimer = setInterval(updateClock, 1000);
+}
+
+function initAuthSystem() {
+  const authModal = document.getElementById('auth-modal');
+  const authForm = document.getElementById('auth-form');
+  const authUsername = document.getElementById('auth-username');
+  const authPassword = document.getElementById('auth-password');
+  const authError = document.getElementById('auth-error-msg');
+  const authSubmitBtn = document.getElementById('auth-submit-btn');
+  const tabLogin = document.getElementById('auth-tab-login');
+  const tabRegister = document.getElementById('auth-tab-register');
+
+  const userHeaderProfile = document.getElementById('user-header-profile');
+  const userPillName = document.getElementById('user-pill-name');
+  const masterPanelBtn = document.getElementById('master-panel-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const banLogoutBtn = document.getElementById('ban-logout-btn');
+  const timeoutLogoutBtn = document.getElementById('timeout-logout-btn');
+
+  let currentAuthTab = 'login';
+
+  // Toggle para mostrar u ocultar contraseña
+  const togglePasswordBtn = document.getElementById('toggle-password-btn');
+  const togglePasswordIcon = document.getElementById('toggle-password-icon');
+
+  if (togglePasswordBtn && authPassword && togglePasswordIcon) {
+    togglePasswordBtn.addEventListener('click', () => {
+      const isPassword = authPassword.type === 'password';
+      authPassword.type = isPassword ? 'text' : 'password';
+      togglePasswordIcon.className = isPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+      togglePasswordBtn.setAttribute('title', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+  }
+
+  function updateAuthTab(tab) {
+    currentAuthTab = tab;
+    if (authError) authError.style.display = 'none';
+    if (tab === 'login') {
+      tabLogin.classList.add('active');
+      tabRegister.classList.remove('active');
+      authSubmitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión';
+    } else {
+      tabRegister.classList.add('active');
+      tabLogin.classList.remove('active');
+      authSubmitBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Crear Cuenta';
+    }
+  }
+
+  if (tabLogin && tabRegister) {
+    tabLogin.addEventListener('click', () => updateAuthTab('login'));
+    tabRegister.addEventListener('click', () => updateAuthTab('register'));
+  }
+
+  function handleLogout() {
+    safeStorage.removeItem('vgc_auth_token');
+    safeStorage.removeItem('vgc_auth_user');
+    authToken = null;
+    currentUser = null;
+    window.location.reload();
+  }
+
+  if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+  if (banLogoutBtn) banLogoutBtn.addEventListener('click', handleLogout);
+  if (timeoutLogoutBtn) timeoutLogoutBtn.addEventListener('click', handleLogout);
+
+  function applySession(user, token) {
+    currentUser = user;
+    authToken = token;
+    safeStorage.setItem('vgc_auth_token', token);
+    safeStorage.setItem('vgc_auth_user', JSON.stringify(user));
+
+    if (authModal) authModal.style.display = 'none';
+    if (userHeaderProfile) userHeaderProfile.style.display = 'flex';
+    if (userPillName) userPillName.innerText = user.username;
+
+    if (user.role === 'master' && masterPanelBtn) {
+      masterPanelBtn.style.display = 'inline-flex';
+    } else if (masterPanelBtn) {
+      masterPanelBtn.style.display = 'none';
+    }
+
+    // Cargar equipo almacenado del usuario
+    loadFormState();
+    adjustPreviewScale();
+  }
+
+  // Restaurar sesión previa si existe
+  const storedUserRaw = safeStorage.getItem('vgc_auth_user');
+  if (authToken && storedUserRaw) {
+    try {
+      const parsedUser = JSON.parse(storedUserRaw);
+      applySession(parsedUser, authToken);
+    } catch (e) {
+      authToken = null;
+    }
+  }
+
+  if (!authToken) {
+    if (authModal) authModal.style.display = 'flex';
+  }
+
+  // Manejo de Login y Registro
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = authUsername.value.trim();
+      const password = authPassword.value;
+      if (!username || !password) return;
+
+      if (authError) authError.style.display = 'none';
+      authSubmitBtn.disabled = true;
+      authSubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...';
+
+      const endpoint = currentAuthTab === 'login' ? '/api/auth/login' : '/api/auth/register';
+
+      try {
+        const res = await fetch(API_BASE + endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (authError) {
+            authError.innerText = data.error || 'Ocurrió un error al procesar la solicitud.';
+            authError.style.display = 'block';
+          }
+          if (data.type === 'ban' || data.type === 'timeout') {
+            await checkAccess();
+          }
+          return;
+        }
+
+        applySession(data.user, data.token);
+        await checkAccess();
+      } catch (err) {
+        if (authError) {
+          authError.innerText = 'Error al conectar con el servidor local.';
+          authError.style.display = 'block';
+        }
+      } finally {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.innerHTML = currentAuthTab === 'login'
+          ? '<i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión'
+          : '<i class="fa-solid fa-user-plus"></i> Crear Cuenta';
+      }
+    });
+  }
+
+  // Verificación periódica cada 10 segundos
+  setInterval(checkAccess, 10000);
+  checkAccess();
+
+  // Configurar Panel Maestro
+  setupMasterPanel();
+}
+
+function setupMasterPanel() {
+  const masterPanelBtn = document.getElementById('master-panel-btn');
+  const masterModal = document.getElementById('master-panel-modal');
+  const closeBtn = document.getElementById('close-master-panel-btn');
+  const refreshBtn = document.getElementById('master-refresh-btn');
+  const tbody = document.getElementById('master-users-tbody');
+  const countEl = document.getElementById('master-users-count');
+  const alertEl = document.getElementById('master-panel-alert');
+
+  if (!masterPanelBtn || !masterModal) return;
+
+  function showPanelAlert(msg, type = 'success') {
+    if (!alertEl) return;
+    alertEl.className = 'master-panel-alert ' + type;
+    alertEl.innerText = msg;
+    alertEl.style.display = 'block';
+    setTimeout(() => {
+      alertEl.style.display = 'none';
+    }, 4000);
+  }
+
+  async function loadUsers() {
+    if (!authToken) return;
+    try {
+      const res = await fetch(API_BASE + '/api/admin/users', {
+        headers: { 'Authorization': 'Bearer ' + authToken }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showPanelAlert(data.error || 'Error al obtener usuarios.', 'error');
+        return;
+      }
+
+      if (countEl) countEl.innerText = `${data.users.length} usuarios registrados`;
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      data.users.forEach(u => {
+        const tr = document.createElement('tr');
+        const lastSeenDate = u.lastSeen ? new Date(u.lastSeen).toLocaleString('es-AR') : 'Nunca';
+
+        let statusBadge = '<span class="badge-status badge-status-active"><i class="fa-solid fa-check"></i> Activo</span>';
+        if (u.status === 'banned') {
+          statusBadge = '<span class="badge-status badge-status-banned"><i class="fa-solid fa-ban"></i> Baneado</span>';
+        } else if (u.status === 'timeout') {
+          const timeLeftMins = u.timeoutUntil ? Math.max(1, Math.round((u.timeoutUntil - Date.now()) / 60000)) : 0;
+          statusBadge = `<span class="badge-status badge-status-timeout"><i class="fa-solid fa-clock"></i> Timeout (${timeLeftMins}m)</span>`;
+        }
+
+        const roleBadge = u.isMaster
+          ? '<span class="badge-role badge-role-master"><i class="fa-solid fa-crown"></i> Maestro</span>'
+          : '<span class="badge-role badge-role-user">Usuario</span>';
+
+        let actionButtons = '';
+        if (u.isMaster) {
+          actionButtons = '<span style="color: #94a3b8; font-size: 12px; font-style: italic;">Inmune a sanciones</span>';
+        } else {
+          actionButtons = `
+            <div class="master-action-btn-group">
+              <button class="master-btn-action btn-act-timeout" data-username="${u.username}" data-action="timeout" data-mins="15" title="Timeout 15m">15m</button>
+              <button class="master-btn-action btn-act-timeout" data-username="${u.username}" data-action="timeout" data-mins="60" title="Timeout 1h">1h</button>
+              <button class="master-btn-action btn-act-timeout" data-username="${u.username}" data-action="timeout" data-mins="1440" title="Timeout 24h">24h</button>
+              <button class="master-btn-action btn-act-ban" data-username="${u.username}" data-action="ban" title="Banear usuario e IP"><i class="fa-solid fa-ban"></i> Ban</button>
+              <button class="master-btn-action btn-act-unban" data-username="${u.username}" data-action="unban" title="Levantar sanciones"><i class="fa-solid fa-rotate-left"></i> Desbanear</button>
+            </div>
+          `;
+        }
+
+        tr.innerHTML = `
+          <td><strong>${u.username}</strong></td>
+          <td>${roleBadge}</td>
+          <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${u.lastIp || '127.0.0.1'}</code></td>
+          <td style="color: #64748b;">${lastSeenDate}</td>
+          <td>${statusBadge}</td>
+          <td style="text-align: right;">${actionButtons}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      // Bind botones de moderación
+      tbody.querySelectorAll('.master-btn-action').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const username = btn.dataset.username;
+          const action = btn.dataset.action;
+          const mins = btn.dataset.mins;
+
+          btn.disabled = true;
+          try {
+            const actRes = await fetch(API_BASE + '/api/admin/action', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken
+              },
+              body: JSON.stringify({ action, username, durationMinutes: mins })
+            });
+            const actData = await actRes.json();
+            if (!actRes.ok) {
+              showPanelAlert(actData.error || 'Error al ejecutar acción.', 'error');
+            } else {
+              showPanelAlert(actData.message || 'Acción aplicada correctamente.', 'success');
+              await loadUsers();
+            }
+          } catch (err) {
+            showPanelAlert('Error de conexión al moderar.', 'error');
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+
+    } catch (e) {
+      showPanelAlert('Error al conectar con la API de administración.', 'error');
+    }
+  }
+
+  masterPanelBtn.addEventListener('click', () => {
+    masterModal.style.display = 'flex';
+    loadUsers();
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      masterModal.style.display = 'none';
+    });
+  }
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      loadUsers();
+    });
+  }
+}
+
+// ----------------------------------------------------
 // Main Execution Entrypoint
 // ----------------------------------------------------
 
@@ -1204,11 +1588,15 @@ async function main() {
   const rpStatus = document.getElementById('remote-print-status');
 
   if (rpBtn && rpModal) {
-    rpBtn.addEventListener('click', () => {
+    rpBtn.addEventListener('click', async () => {
       if (rpBtn.disabled) return;
       
       // Shadowban check
       if (isShadowBanned()) return;
+      
+      // Verificar acceso/moderación en servidor local
+      const accessAllowed = await checkAccess();
+      if (!accessAllowed) return;
       
       // Validar horario de Lockdown
       if (checkLockdown()) {
@@ -1278,6 +1666,9 @@ async function main() {
   // Hook up autocompletes
   setupAllAutocompletes();
   
+  // Inicializar sistema de autenticación y moderación local
+  initAuthSystem();
+
   // Recover form state from previous session
   loadFormState();
   

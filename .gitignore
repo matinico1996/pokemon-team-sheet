@@ -9,10 +9,15 @@ yarn-error.log*
 .eslintcache
 
 # Local configuration
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Local database
+data/
+*.local-db.json
 
 # Node dependencies (if package-lock or node_modules are created in the future)
 node_modules/

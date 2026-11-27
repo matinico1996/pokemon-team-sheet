@@ -65,6 +65,18 @@
           </div>
         </div>
         <div class="header-actions">
+          <button id="master-panel-btn" class="btn btn-warning master-panel-trigger" style="display: none;">
+            <i class="fa-solid fa-shield-halved"></i> Panel Maestro
+          </button>
+          <div id="user-header-profile" class="user-header-profile" style="display: none;">
+            <div class="user-pill">
+              <i class="fa-solid fa-user-circle"></i>
+              <span id="user-pill-name">Usuario</span>
+            </div>
+            <button id="logout-btn" class="btn btn-secondary btn-logout" title="Cerrar Sesión">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i> Salir
+            </button>
+          </div>
           <button id="import-showdown-btn" class="btn btn-primary" style="background: #6366f1; border-color: #6366f1; color: white;">
             <i class="fa-solid fa-file-import"></i> Pokepaste
           </button>
@@ -789,6 +801,107 @@
       <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
         <button id="cancel-remote-print-btn" class="btn btn-secondary" style="background: #e2e8f0; color: #0f172a; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancelar</button>
         <button id="send-remote-print-btn" class="btn btn-primary" style="background: #f59e0b; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Enviar PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal (Login / Register) -->
+  <div id="auth-modal" class="modal-overlay auth-modal-overlay" style="display: none;">
+    <div class="modal-content auth-modal-box">
+      <div class="auth-modal-header">
+        <div class="auth-icon-circle"><i class="fa-solid fa-gamepad"></i></div>
+        <h2>VGC Team Sheet</h2>
+        <p>Iniciá sesión o registrate para gestionar tus planillas de torneo</p>
+      </div>
+      <div class="auth-tabs">
+        <button type="button" id="auth-tab-login" class="auth-tab active">Iniciar Sesión</button>
+        <button type="button" id="auth-tab-register" class="auth-tab">Crear Cuenta</button>
+      </div>
+      <form id="auth-form" class="auth-form">
+        <div class="auth-input-group">
+          <label for="auth-username"><i class="fa-solid fa-user"></i> Nombre de Usuario</label>
+          <input type="text" id="auth-username" required placeholder="Usuario" autocomplete="username">
+        </div>
+        <div class="auth-input-group">
+          <label for="auth-password"><i class="fa-solid fa-key"></i> Contraseña</label>
+          <div class="password-wrapper">
+            <input type="password" id="auth-password" required placeholder="••••••••" autocomplete="current-password">
+            <button type="button" id="toggle-password-btn" class="toggle-password-btn" title="Mostrar u ocultar contraseña">
+              <i id="toggle-password-icon" class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div id="auth-error-msg" class="auth-error-msg" style="display: none;"></div>
+        <button type="submit" id="auth-submit-btn" class="btn btn-primary auth-submit-btn">
+          <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lock Ban Overlay -->
+  <div id="lock-ban-overlay" class="lock-overlay" style="display: none;">
+    <div class="lock-card lock-card-ban">
+      <div class="lock-icon-danger"><i class="fa-solid fa-ban"></i></div>
+      <h2>Acceso denegado por el administrador</h2>
+      <p>Tu cuenta o dirección IP se encuentra suspendida permanentemente.</p>
+      <button type="button" id="ban-logout-btn" class="btn btn-secondary" style="margin-top: 15px;">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> Salir
+      </button>
+    </div>
+  </div>
+
+  <!-- Lock Timeout Overlay -->
+  <div id="lock-timeout-overlay" class="lock-overlay" style="display: none;">
+    <div class="lock-card lock-card-timeout">
+      <div class="lock-icon-warning"><i class="fa-solid fa-hourglass-half fa-spin"></i></div>
+      <h2>Estás en tiempo fuera para reflexionar</h2>
+      <p class="timeout-timer-text">Podés volver en: <strong id="timeout-countdown-clock">00:00</strong></p>
+      <p style="font-size: 13px; color: #64748b; margin-top: 5px;">La página se actualizará automáticamente cuando finalice el tiempo.</p>
+      <button type="button" id="timeout-logout-btn" class="btn btn-secondary" style="margin-top: 15px;">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> Salir
+      </button>
+    </div>
+  </div>
+
+  <!-- Master Admin Panel Modal -->
+  <div id="master-panel-modal" class="modal-overlay master-modal-overlay" style="display: none;">
+    <div class="modal-content master-panel-box">
+      <div class="master-panel-header">
+        <div class="master-header-info">
+          <h2><i class="fa-solid fa-shield-halved"></i> Panel Maestro de Moderación</h2>
+          <p>Supervisión de usuarios, control de timeouts y baneos de cuentas e IPs en tiempo real</p>
+        </div>
+        <button type="button" id="close-master-panel-btn" class="btn-close-modal" title="Cerrar panel">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="master-panel-alert" class="master-panel-alert" style="display: none;"></div>
+
+      <div class="master-table-toolbar">
+        <button type="button" id="master-refresh-btn" class="btn btn-secondary btn-sm">
+          <i class="fa-solid fa-arrows-rotate"></i> Actualizar Lista
+        </button>
+        <span id="master-users-count" class="master-users-count">0 usuarios registrados</span>
+      </div>
+
+      <div class="master-table-wrapper">
+        <table class="master-users-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Última IP</th>
+              <th>Última Conexión</th>
+              <th>Estado</th>
+              <th style="text-align: right;">Acciones de Moderación</th>
+            </tr>
+          </thead>
+          <tbody id="master-users-tbody">
+            <!-- Dinámico -->
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
