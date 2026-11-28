@@ -77,6 +77,9 @@
               <i class="fa-solid fa-arrow-right-from-bracket"></i> Salir
             </button>
           </div>
+          <button id="header-save-team-btn" class="btn btn-success" title="Guardar equipo actual en un slot local">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Equipo
+          </button>
           <button id="import-showdown-btn" class="btn btn-primary" style="background: #6366f1; border-color: #6366f1; color: white;">
             <i class="fa-solid fa-file-import"></i> Pokepaste
           </button>
@@ -106,6 +109,32 @@
       <!-- Editor Column -->
       <section class="editor-section">
         
+        <!-- Mis Equipos Creados / Slots Locales -->
+        <div class="card teams-slots-card" id="teams-slots-card">
+          <div class="card-header teams-slots-header">
+            <div class="teams-slots-title-area">
+              <i class="fa-solid fa-boxes-stacked teams-slots-icon"></i>
+              <div>
+                <h2>Mis Equipos Creados (Slots Locales)</h2>
+                <p class="teams-slots-subtitle">Tus planillas guardadas en este dispositivo para tu usuario</p>
+              </div>
+            </div>
+            <div class="teams-slots-header-actions">
+              <button type="button" id="card-save-team-btn" class="btn btn-success btn-sm">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Equipo
+              </button>
+              <button type="button" id="card-new-team-btn" class="btn btn-secondary btn-sm" title="Limpiar para crear un nuevo equipo">
+                <i class="fa-solid fa-plus"></i> Nuevo Equipo
+              </button>
+            </div>
+          </div>
+          <div class="teams-slots-body">
+            <div id="teams-slots-list" class="teams-slots-list">
+              <!-- Se genera dinámicamente con JS -->
+            </div>
+          </div>
+        </div>
+
         <!-- Player Information Form -->
         <div class="card player-info-card">
           <div class="card-header">
@@ -906,7 +935,54 @@
     </div>
   </div>
 
+  <!-- Save Team Modal -->
+  <div id="save-team-modal" class="modal-overlay save-team-modal-overlay" style="display: none;">
+    <div class="modal-content save-team-modal-box">
+      <div class="save-team-modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="save-team-icon-circle"><i class="fa-solid fa-floppy-disk"></i></div>
+          <div>
+            <h3>Guardar Equipo en Slot Local</h3>
+            <p>Se guardará en el almacenamiento local de tu cuenta</p>
+          </div>
+        </div>
+        <button type="button" id="close-save-team-modal" class="btn-close-modal">&times;</button>
+      </div>
+
+      <div class="save-team-modal-body">
+        <div class="input-group">
+          <label for="save-team-name-input">Nombre o Identificador del Equipo</label>
+          <input type="text" id="save-team-name-input" placeholder="Ej: Reg H Rain, Trick Room, Equipo Torneo...">
+        </div>
+
+        <div class="save-team-preview-area">
+          <label>Pokémon en esta planilla:</label>
+          <div id="save-team-preview-chips" class="save-team-preview-chips">
+            <!-- Chips de Pokémon 1 a 6 -->
+          </div>
+        </div>
+
+        <div id="save-team-target-group" class="input-group" style="margin-top: 14px; display: none;">
+          <label for="save-team-target-select">Destino del Guardado</label>
+          <select id="save-team-target-select" class="save-team-target-select">
+            <option value="new">+ Crear un nuevo slot de equipo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="save-team-modal-footer">
+        <button type="button" id="cancel-save-team-btn" class="btn btn-secondary">Cancelar</button>
+        <button type="button" id="confirm-save-team-btn" class="btn btn-success">
+          <i class="fa-solid fa-floppy-disk"></i> Guardar en este Slot
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="vgc-toast-container" class="vgc-toast-container"></div>
+
   <!-- JavaScript Logic -->
-  <script src="app.js?v=2.0.1"></script>
+  <script src="app.js?v=2.0.2"></script>
 </body>
 </html>

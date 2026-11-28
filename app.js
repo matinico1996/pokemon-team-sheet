@@ -626,7 +626,441 @@ function clearForm() {
       if (status) status.className = 'pokemon-api-status';
     }
     safeStorage.removeItem(getUserStorageKey());
+    activeTeamSlotId = null;
+    renderTeamSlots();
   }
+}
+
+// ----------------------------------------------------
+// Local Saved Teams / Slots Manager
+// ----------------------------------------------------
+
+let activeTeamSlotId = null;
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('vgc-toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = `vgc-toast toast-${type}`;
+  
+  let icon = 'circle-info';
+  if (type === 'success') icon = 'circle-check';
+  if (type === 'error') icon = 'circle-exclamation';
+  
+  toast.innerHTML = `<i class="fa-solid fa-${icon}"></i> <span>${escapeHtml(message)}</span>`;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px) scale(0.95)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+function getSavedTeamsStorageKey() {
+  if (currentUser && currentUser.username) {
+    return 'vgc_saved_teams_' + currentUser.username.trim().toLowerCase();
+  }
+  return 'vgc_saved_teams_guest';
+}
+
+function getSavedTeams() {
+  const raw = safeStorage.getItem(getSavedTeamsStorageKey());
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error('Error al leer equipos guardados:', e);
+    return [];
+  }
+}
+
+function setSavedTeams(teams) {
+  safeStorage.setItem(getSavedTeamsStorageKey(), JSON.stringify(teams));
+}
+
+function getCurrentFormData() {
+  const formState = {
+    trainer: {
+      playerName: document.getElementById('trainer-player-name')?.value || '',
+      gameName: document.getElementById('trainer-game-name')?.value || '',
+      teamName: document.getElementById('trainer-team-name')?.value || '',
+      profileName: document.getElementById('trainer-profile-name')?.value || '',
+      playerId: document.getElementById('trainer-player-id')?.value || ''
+    },
+    slots: []
+  };
+
+  for (let i = 1; i <= 6; i++) {
+    const card = document.querySelector(`.pokemon-card[data-slot="${i}"]`);
+    const slotState = {
+      name: card ? card.querySelector('.pk-name')?.value || '' : '',
+      nature: card ? card.querySelector('.pk-nature')?.value || '' : '',
+      ability: card ? card.querySelector('.pk-ability')?.value || '' : '',
+      item: card ? card.querySelector('.pk-item')?.value || '' : '',
+      moves: [
+        card ? card.querySelector('.pk-move[data-move="1"]')?.value || '' : '',
+        card ? card.querySelector('.pk-move[data-move="2"]')?.value || '' : '',
+        card ? card.querySelector('.pk-move[data-move="3"]')?.value || '' : '',
+        card ? card.querySelector('.pk-move[data-move="4"]')?.value || '' : ''
+      ]
+    };
+    formState.slots.push(slotState);
+  }
+  return formState;
+}
+
+function formatSlotDate(timestamp) {
+  if (!timestamp) return '';
+  const d = new Date(timestamp);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderTeamSlots() {
+  const container = document.getElementById('teams-slots-list');
+  const countBadge = document.getElementById('teams-count-badge');
+  if (!container) return;
+
+  const teams = getSavedTeams();
+  if (countBadge) {
+    countBadge.innerText = `${teams.length} ${teams.length === 1 ? 'equipo' : 'equipos'}`;
+  }
+
+  if (teams.length === 0) {
+    container.innerHTML = `
+      <div class="teams-slots-empty">
+        <i class="fa-solid fa-boxes-stacked"></i>
+        <p>No tenés equipos guardados aún.</p>
+        <small>Armá tu planilla o importá un equipo con Poképaste y hacé clic en <strong>"Guardar Equipo"</strong> para guardarlo en un slot local.</small>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = teams.map((team, index) => {
+    const isActive = team.id === activeTeamSlotId;
+    const pkChips = (team.slots || []).map((s, sIdx) => {
+      const name = s.name && s.name.trim() ? s.name.trim() : `Pk ${sIdx + 1}`;
+      const filled = Boolean(s.name && s.name.trim());
+      return `<span class="team-pk-chip ${filled ? 'filled' : 'empty'}">${escapeHtml(name)}</span>`;
+    }).join('');
+
+    return `
+      <div class="team-slot-card ${isActive ? 'active' : ''}" data-team-id="${team.id}">
+        <div class="team-slot-main">
+          <span class="team-slot-badge">Slot #${index + 1}</span>
+          <div class="team-slot-details">
+            <div class="team-slot-header-row">
+              <h4 class="team-slot-name">${escapeHtml(team.name || 'Equipo sin nombre')}</h4>
+              ${isActive ? '<span class="team-slot-active-tag"><i class="fa-solid fa-circle-check"></i> Activo</span>' : ''}
+              <span class="team-slot-timestamp">${formatSlotDate(team.updatedAt || team.createdAt)}</span>
+            </div>
+            <div class="team-slot-pokemon-chips">
+              ${pkChips}
+            </div>
+          </div>
+        </div>
+        <div class="team-slot-actions">
+          <button type="button" class="btn-slot-load" data-team-id="${team.id}" title="Cargar este equipo en la planilla">
+            <i class="fa-solid fa-arrow-up-from-bracket"></i> Cargar
+          </button>
+          <button type="button" class="btn-slot-update" data-team-id="${team.id}" title="Actualizar este slot con la planilla actual">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </button>
+          <button type="button" class="btn-slot-delete" data-team-id="${team.id}" title="Eliminar este slot">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Attach event listeners for each slot card's actions
+  container.querySelectorAll('.btn-slot-load').forEach(btn => {
+    btn.addEventListener('click', () => loadTeamSlot(btn.dataset.teamId));
+  });
+
+  container.querySelectorAll('.btn-slot-update').forEach(btn => {
+    btn.addEventListener('click', () => updateExistingTeamSlot(btn.dataset.teamId));
+  });
+
+  container.querySelectorAll('.btn-slot-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteTeamSlot(btn.dataset.teamId));
+  });
+}
+
+function loadTeamSlot(teamId) {
+  const teams = getSavedTeams();
+  const team = teams.find(t => t.id === teamId);
+  if (!team) {
+    showToast('No se encontró el equipo seleccionado.', 'error');
+    return;
+  }
+
+  activeTeamSlotId = team.id;
+
+  // Restaurar Entrenador
+  if (team.trainer) {
+    const pName = document.getElementById('trainer-player-name');
+    if (pName) pName.value = team.trainer.playerName || (currentUser ? currentUser.username : '');
+    const gName = document.getElementById('trainer-game-name');
+    if (gName) gName.value = team.trainer.gameName || '';
+    const tName = document.getElementById('trainer-team-name');
+    if (tName) tName.value = team.name || team.trainer.teamName || '';
+    const prName = document.getElementById('trainer-profile-name');
+    if (prName) prName.value = team.trainer.profileName || '';
+    const pId = document.getElementById('trainer-player-id');
+    if (pId) pId.value = team.trainer.playerId || '';
+  }
+
+  // Restaurar Pokémon
+  if (Array.isArray(team.slots)) {
+    team.slots.forEach((slot, index) => {
+      const slotNum = index + 1;
+      const card = document.querySelector(`.pokemon-card[data-slot="${slotNum}"]`);
+      if (!card) return;
+
+      card.querySelector('.pk-name').value = slot.name || '';
+      card.querySelector('.pk-nature').value = slot.nature || '';
+      card.querySelector('.pk-ability').value = slot.ability || '';
+      card.querySelector('.pk-item').value = slot.item || '';
+
+      for (let m = 1; m <= 4; m++) {
+        const moveInput = card.querySelector(`.pk-move[data-move="${m}"]`);
+        if (moveInput) moveInput.value = (slot.moves && slot.moves[m - 1]) || '';
+      }
+    });
+  }
+
+  // Refrescar inputs, preview de la planilla y sprites
+  document.querySelectorAll('input[type="text"]').forEach(input => triggerBindingUpdate(input));
+  saveFormState();
+  renderTeamSlots();
+
+  showToast(`Equipo "${team.name || 'Slot'}" cargado con éxito.`, 'success');
+}
+
+function updateExistingTeamSlot(teamId) {
+  const teams = getSavedTeams();
+  const idx = teams.findIndex(t => t.id === teamId);
+  if (idx === -1) return;
+
+  const currentData = getCurrentFormData();
+  teams[idx].trainer = currentData.trainer;
+  teams[idx].slots = currentData.slots;
+  teams[idx].updatedAt = Date.now();
+  if (currentData.trainer.teamName && currentData.trainer.teamName.trim()) {
+    teams[idx].name = currentData.trainer.teamName.trim();
+  }
+
+  setSavedTeams(teams);
+  activeTeamSlotId = teamId;
+  renderTeamSlots();
+  showToast(`Slot "${teams[idx].name}" actualizado con el equipo actual.`, 'success');
+}
+
+function deleteTeamSlot(teamId) {
+  const teams = getSavedTeams();
+  const team = teams.find(t => t.id === teamId);
+  if (!team) return;
+
+  if (confirm(`¿Estás seguro de que deseas eliminar el equipo "${team.name}"?`)) {
+    const updated = teams.filter(t => t.id !== teamId);
+    setSavedTeams(updated);
+    if (activeTeamSlotId === teamId) {
+      activeTeamSlotId = null;
+    }
+    renderTeamSlots();
+    showToast('Equipo eliminado de tus slots.', 'info');
+  }
+}
+
+function createNewTeamSlot() {
+  const teamNameInput = document.getElementById('trainer-team-name');
+  if (teamNameInput) {
+    teamNameInput.value = '';
+    triggerBindingUpdate(teamNameInput);
+  }
+
+  for (let i = 1; i <= 6; i++) {
+    const card = document.querySelector(`.pokemon-card[data-slot="${i}"]`);
+    if (card) {
+      card.querySelectorAll('input[type="text"]').forEach(input => {
+        input.value = '';
+        triggerBindingUpdate(input);
+      });
+      updateCardAvatar(i, '');
+      const status = document.getElementById(`api-status-${i}`);
+      if (status) status.className = 'pokemon-api-status';
+    }
+  }
+
+  activeTeamSlotId = null;
+  saveFormState();
+  renderTeamSlots();
+  showToast('Planilla lista para armar un nuevo equipo.', 'info');
+}
+
+function openSaveTeamModal() {
+  const modal = document.getElementById('save-team-modal');
+  const nameInput = document.getElementById('save-team-name-input');
+  const chipsContainer = document.getElementById('save-team-preview-chips');
+  const targetGroup = document.getElementById('save-team-target-group');
+  const targetSelect = document.getElementById('save-team-target-select');
+
+  if (!modal) return;
+
+  const currentData = getCurrentFormData();
+  const existingTeams = getSavedTeams();
+
+  // Nombre sugerido
+  let suggestedName = currentData.trainer.teamName ? currentData.trainer.teamName.trim() : '';
+  if (!suggestedName) {
+    if (activeTeamSlotId) {
+      const activeTeam = existingTeams.find(t => t.id === activeTeamSlotId);
+      if (activeTeam) suggestedName = activeTeam.name;
+    } else {
+      suggestedName = `Equipo #${existingTeams.length + 1}`;
+    }
+  }
+  if (nameInput) nameInput.value = suggestedName;
+
+  // Chips de preview de los 6 Pokémon
+  if (chipsContainer) {
+    chipsContainer.innerHTML = currentData.slots.map((s, idx) => {
+      const hasName = Boolean(s.name && s.name.trim());
+      const pName = hasName ? s.name.trim() : `Slot ${idx + 1} (Vacío)`;
+      return `<span class="team-pk-chip ${hasName ? 'filled' : 'empty'}">${escapeHtml(pName)}</span>`;
+    }).join('');
+  }
+
+  // Selector de destino si hay equipos existentes
+  if (targetGroup && targetSelect) {
+    if (existingTeams.length > 0) {
+      targetGroup.style.display = 'block';
+      let optionsHtml = '<option value="new">+ Crear como un nuevo slot de equipo</option>';
+      existingTeams.forEach(t => {
+        const isSelected = t.id === activeTeamSlotId;
+        optionsHtml += `<option value="${t.id}" ${isSelected ? 'selected' : ''}>Sobrescribir: ${escapeHtml(t.name)}</option>`;
+      });
+      targetSelect.innerHTML = optionsHtml;
+    } else {
+      targetGroup.style.display = 'none';
+      targetSelect.innerHTML = '<option value="new">+ Crear como un nuevo slot de equipo</option>';
+    }
+  }
+
+  modal.style.display = 'flex';
+  if (nameInput) {
+    setTimeout(() => {
+      nameInput.focus();
+      nameInput.select();
+    }, 50);
+  }
+}
+
+function closeSaveTeamModal() {
+  const modal = document.getElementById('save-team-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmSaveTeamModal() {
+  const nameInput = document.getElementById('save-team-name-input');
+  const targetSelect = document.getElementById('save-team-target-select');
+
+  const teamName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Equipo Sin Nombre';
+  const targetMode = targetSelect ? targetSelect.value : 'new';
+
+  const currentData = getCurrentFormData();
+  currentData.trainer.teamName = teamName;
+
+  // Actualizar también el campo del formulario visual
+  const trainerTeamNameInput = document.getElementById('trainer-team-name');
+  if (trainerTeamNameInput) {
+    trainerTeamNameInput.value = teamName;
+    triggerBindingUpdate(trainerTeamNameInput);
+  }
+
+  const teams = getSavedTeams();
+
+  if (targetMode === 'new' || !targetMode) {
+    const newTeam = {
+      id: 'team_' + Date.now(),
+      name: teamName,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      trainer: currentData.trainer,
+      slots: currentData.slots
+    };
+    teams.unshift(newTeam);
+    activeTeamSlotId = newTeam.id;
+    setSavedTeams(teams);
+    showToast(`¡Equipo "${teamName}" guardado en un nuevo slot!`, 'success');
+  } else {
+    const idx = teams.findIndex(t => t.id === targetMode);
+    if (idx !== -1) {
+      teams[idx].name = teamName;
+      teams[idx].trainer = currentData.trainer;
+      teams[idx].slots = currentData.slots;
+      teams[idx].updatedAt = Date.now();
+      activeTeamSlotId = teams[idx].id;
+      setSavedTeams(teams);
+      showToast(`¡Slot "${teamName}" actualizado con éxito!`, 'success');
+    }
+  }
+
+  saveFormState();
+  renderTeamSlots();
+  closeSaveTeamModal();
+}
+
+function initSavedTeamsSystem() {
+  const headerSaveBtn = document.getElementById('header-save-team-btn');
+  const cardSaveBtn = document.getElementById('card-save-team-btn');
+  const cardNewBtn = document.getElementById('card-new-team-btn');
+
+  const modal = document.getElementById('save-team-modal');
+  const closeBtn = document.getElementById('close-save-team-modal');
+  const cancelBtn = document.getElementById('cancel-save-team-btn');
+  const confirmBtn = document.getElementById('confirm-save-team-btn');
+  const nameInput = document.getElementById('save-team-name-input');
+
+  if (headerSaveBtn) headerSaveBtn.addEventListener('click', openSaveTeamModal);
+  if (cardSaveBtn) cardSaveBtn.addEventListener('click', openSaveTeamModal);
+  if (cardNewBtn) cardNewBtn.addEventListener('click', createNewTeamSlot);
+
+  if (closeBtn) closeBtn.addEventListener('click', closeSaveTeamModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeSaveTeamModal);
+  if (confirmBtn) confirmBtn.addEventListener('click', confirmSaveTeamModal);
+
+  if (nameInput) {
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmSaveTeamModal();
+      }
+    });
+  }
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeSaveTeamModal();
+    });
+  }
+
+  renderTeamSlots();
 }
 
 function isShadowBanned() {
@@ -1265,6 +1699,7 @@ function initAuthSystem() {
     // Cargar equipo almacenado del usuario
     loadFormState();
     adjustPreviewScale();
+    renderTeamSlots();
   }
 
   // Restaurar sesión previa si existe
@@ -1668,6 +2103,9 @@ async function main() {
   
   // Inicializar sistema de autenticación y moderación local
   initAuthSystem();
+
+  // Inicializar gestor de slots de equipos guardados localmente
+  initSavedTeamsSystem();
 
   // Recover form state from previous session
   loadFormState();
