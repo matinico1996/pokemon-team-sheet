@@ -1319,7 +1319,7 @@ function initAuthSystem() {
         await checkAccess();
       } catch (err) {
         if (authError) {
-          authError.innerText = 'Error al conectar con el servidor local.';
+          authError.innerText = 'Error al conectar con el servidor. Reintente en unos instantes.';
           authError.style.display = 'block';
         }
       } finally {

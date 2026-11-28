@@ -23,3 +23,5 @@ data/
 node_modules/
 dist/
 .vite/
+.vs/
+*.png
